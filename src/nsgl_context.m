@@ -24,7 +24,11 @@
 //
 //========================================================================
 
+#include "GLFW/glfw3.h"
 #include "internal.h"
+#include <AppKit/AppKit.h>
+#include <AppKit/NSOpenGL.h>
+#include <objc/objc.h>
 
 #if defined(_GLFW_COCOA)
 
@@ -149,6 +153,15 @@ void _glfwTerminateNSGL(void)
 {
 }
 
+BOOL isHardwareAccelerationSupported(void) {
+    NSOpenGLPixelFormatAttribute attributes[] = {
+        NSOpenGLPFAAccelerated,
+        0
+    };
+    NSOpenGLPixelFormat* pixelFormat = [[NSOpenGLPixelFormat alloc] initWithAttributes:attributes];
+    return (pixelFormat != nil);
+}
+
 GLFWbool _glfwCreateContextNSGL(_GLFWwindow* window,
                                 const _GLFWctxconfig* ctxconfig,
                                 const _GLFWfbconfig* fbconfig)
@@ -199,8 +212,14 @@ GLFWbool _glfwCreateContextNSGL(_GLFWwindow* window,
     NSOpenGLPixelFormatAttribute attribs[40];
     int index = 0;
 
-    ADD_ATTRIB(NSOpenGLPFAAccelerated);
-    ADD_ATTRIB(NSOpenGLPFAClosestPolicy);
+
+    // Checks if the current macOS device can support accelerated pixel formats. If not, input an error that specifies it failed.
+    if (isHardwareAccelerationSupported()) {
+        ADD_ATTRIB(NSOpenGLPFAAccelerated);
+        ADD_ATTRIB(NSOpenGLPFAClosestPolicy);
+    } else {
+        _glfwInputError(GLFW_FALLBACK_SOFTWARE, "NSGL: Falling back to the software renderer");
+    }
 
     if (ctxconfig->nsgl.offline)
     {
